@@ -100,6 +100,7 @@ describe('RadioScreen', () => {
     });
     window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue();
     window.HTMLMediaElement.prototype.pause = vi.fn();
+    window.HTMLMediaElement.prototype.load = vi.fn();
   });
 
   const renderScreen = () => {
