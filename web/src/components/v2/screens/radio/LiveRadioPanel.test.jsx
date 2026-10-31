@@ -20,24 +20,32 @@ afterEach(() => {
 });
 
 function addRadio(key, label) {
-  fireEvent.change(screen.getByLabelText('Feed key'), { target: { value: key } });
+  fireEvent.change(screen.getByLabelText('Stream URL'), { target: { value: key } });
   fireEvent.change(screen.getByLabelText('Label'), { target: { value: label } });
   fireEvent.click(screen.getByText('Add radio'));
 }
 
 describe('live radios', () => {
+  it('starts empty and ignores old provider-specific saved feeds', () => {
+    localStorage.setItem('skyspy-live-radios-v1', JSON.stringify([{ key: 'old_feed' }]));
+    const { container } = render(<LiveRadioPanel />);
+    expect(container.querySelectorAll('audio')).toHaveLength(0);
+    expect(screen.getByText(/No radios added/)).toBeTruthy();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  });
   it('plays simultaneous feeds with independent volume and disconnects on stop/removal', () => {
     const { container } = render(<LiveRadioPanel />);
-    addRadio('kaus_ground', 'Ground');
-    fireEvent.click(screen.getByRole('button', { name: 'Play KAUS Tower' }));
+    addRadio('https://radio.example.org/tower', 'Tower');
+    addRadio('https://radio.example.org/ground?token=abc', 'Ground');
+    fireEvent.click(screen.getByRole('button', { name: 'Play Tower' }));
     fireEvent.click(screen.getByRole('button', { name: 'Play Ground' }));
     const [tower, ground] = container.querySelectorAll('audio');
-    expect(tower.src).toBe('https://d.liveatc.net/kaus3_twr');
-    expect(ground.src).toBe('https://d.liveatc.net/kaus_ground');
+    expect(tower.src).toBe('https://radio.example.org/tower');
+    expect(ground.src).toBe('https://radio.example.org/ground?token=abc');
     fireEvent.change(screen.getByLabelText('Ground volume'), { target: { value: '20' } });
     expect(ground.volume).toBe(0.2);
     expect(tower.volume).toBe(0.7);
-    fireEvent.click(screen.getByRole('button', { name: 'Stop KAUS Tower' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Tower' }));
     expect(tower.hasAttribute('src')).toBe(false);
     expect(ground.hasAttribute('src')).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Ground' }));
@@ -46,7 +54,7 @@ describe('live radios', () => {
 
   it('persists selection and volume without restoring playback', () => {
     const first = render(<LiveRadioPanel />);
-    addRadio('kaus_ground', 'Ground');
+    addRadio('https://radio.example.org/ground?token=abc', 'Ground');
     fireEvent.change(screen.getByLabelText('Ground volume'), { target: { value: '0' } });
     first.unmount();
     const second = render(<LiveRadioPanel />);
@@ -56,16 +64,17 @@ describe('live radios', () => {
     ).toBe(true);
   });
 
-  it('rejects URLs and duplicate keys, and allows retry after playback fails', async () => {
+  it('rejects unsafe URLs and duplicates, and allows retry after playback fails', async () => {
     render(<LiveRadioPanel />);
-    addRadio('https://example.com', 'Invalid');
-    expect(screen.getByRole('alert').textContent).toContain('feed key');
-    addRadio('kaus3_twr', 'Duplicate');
+    addRadio('javascript:alert(1)', 'Invalid');
+    expect(screen.getByRole('alert').textContent).toContain('HTTP or HTTPS');
+    addRadio('https://radio.example.org/tower', 'Tower');
+    addRadio('https://radio.example.org/tower', 'Duplicate');
     expect(screen.getByRole('alert').textContent).toContain('already');
     HTMLMediaElement.prototype.play.mockRejectedValueOnce(new Error('offline'));
-    fireEvent.click(screen.getByRole('button', { name: 'Play KAUS Tower' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Play Tower' }));
     await waitFor(() => expect(screen.getByText(/Unable to play/)).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Play KAUS Tower' }));
-    expect(screen.getByRole('button', { name: 'Stop KAUS Tower' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Play Tower' }));
+    expect(screen.getByRole('button', { name: 'Stop Tower' })).toBeTruthy();
   });
 });

@@ -1,27 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const STORAGE_KEY = 'skyspy-live-radios-v1';
-const DEFAULT_FEEDS = [{ key: 'kaus3_twr', label: 'KAUS Tower', volume: 0.7 }];
-const validKey = (key) => typeof key === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(key);
+const STORAGE_KEY = 'skyspy-live-radios-v2';
+
+function streamUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function loadFeeds() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!Array.isArray(saved)) return DEFAULT_FEEDS;
+    if (!Array.isArray(saved)) return [];
     const seen = new Set();
     return saved
       .filter((feed) => {
-        if (!feed || !validKey(feed.key) || seen.has(feed.key)) return false;
-        seen.add(feed.key);
+        if (!feed || !streamUrl(feed.url) || seen.has(streamUrl(feed.url))) return false;
+        seen.add(streamUrl(feed.url));
         return true;
       })
       .map((feed) => ({
-        key: feed.key,
-        label: typeof feed.label === 'string' ? feed.label.slice(0, 100) : feed.key,
+        url: streamUrl(feed.url),
+        label: typeof feed.label === 'string' ? feed.label.slice(0, 100) : feed.url,
         volume: Number.isFinite(feed.volume) ? Math.max(0, Math.min(1, feed.volume)) : 0.7,
       }));
   } catch {
-    return DEFAULT_FEEDS;
+    return [];
   }
 }
 
@@ -57,14 +66,13 @@ function LiveRadioPlayer({ feed, onVolume, onRemove }) {
   const play = async () => {
     const attempt = ++attemptRef.current;
     const audio = audioRef.current;
-    // LiveATC's dispatcher selects the stream server and supplies nocache.
-    audio.src = `https://d.liveatc.net/${encodeURIComponent(feed.key)}`;
+    audio.src = feed.url;
     setStatus('Connecting');
     try {
       await audio.play();
     } catch {
       if (attempt === attemptRef.current)
-        setStatus('Unable to play. Check the feed key and try again.');
+        setStatus('Unable to play. Check the stream URL and try again.');
     }
   };
 
@@ -81,13 +89,13 @@ function LiveRadioPlayer({ feed, onVolume, onRemove }) {
         }}
         onError={() => {
           if (audioRef.current?.getAttribute('src'))
-            setStatus('Unable to play. Check the feed key and try again.');
+            setStatus('Unable to play. Check the stream URL and try again.');
         }}
         onEnded={() => setStatus('Stream ended. Press Play to reconnect.')}
       />
       <div className="v2-radio-live__identity">
         <strong>{feed.label}</strong>
-        <small>{feed.key}</small>
+        <small>{feed.url}</small>
         <span role="status">{status}</span>
       </div>
       <button
@@ -117,7 +125,7 @@ function LiveRadioPlayer({ feed, onVolume, onRemove }) {
 
 export function LiveRadioPanel() {
   const [feeds, setFeeds] = useState(loadFeeds);
-  const [key, setKey] = useState('');
+  const [url, setUrl] = useState('');
   const [label, setLabel] = useState('');
   const [error, setError] = useState('');
 
@@ -131,17 +139,20 @@ export function LiveRadioPanel() {
 
   const addFeed = (event) => {
     event.preventDefault();
-    const mount = key.trim();
-    if (!validKey(mount)) {
-      setError('Enter a feed key using letters, numbers, underscores, or hyphens.');
+    const normalized = streamUrl(url.trim());
+    if (!normalized) {
+      setError('Enter a valid HTTP or HTTPS stream URL without embedded credentials.');
       return;
     }
-    if (feeds.some((feed) => feed.key.toLowerCase() === mount.toLowerCase())) {
+    if (feeds.some((feed) => feed.url === normalized)) {
       setError('That feed is already in your list.');
       return;
     }
-    setFeeds((prev) => [...prev, { key: mount, label: label.trim() || mount, volume: 0.7 }]);
-    setKey('');
+    setFeeds((prev) => [
+      ...prev,
+      { url: normalized, label: label.trim() || new URL(normalized).hostname, volume: 0.7 },
+    ]);
+    setUrl('');
     setLabel('');
     setError('');
   };
@@ -150,17 +161,17 @@ export function LiveRadioPanel() {
     <section className="v2-radio-live" aria-label="Live radio">
       <h2>Live radio</h2>
       <p>
-        Listen to multiple LiveATC feeds together. Feeds and volumes are saved in this browser.
+        Listen to multiple audio streams together. Feeds and volumes are saved in this browser.
         Leaving Radio stops playback.
       </p>
       <form onSubmit={addFeed} className="v2-radio-live__form">
         <label>
-          Feed key
+          Stream URL
           <input
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder="kaus3_twr"
-            maxLength={100}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://radio.example.org/stream"
+            maxLength={4096}
             required
           />
         </label>
@@ -169,28 +180,26 @@ export function LiveRadioPanel() {
           <input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="KAUS Tower"
+            placeholder="My radio"
             maxLength={100}
           />
         </label>
         <button type="submit">Add radio</button>
       </form>
       {error && <p role="alert">{error}</p>}
+      {feeds.length === 0 && <p>No radios added. Add a streaming audio URL to start listening.</p>}
       {feeds.map((feed) => (
         <LiveRadioPlayer
-          key={feed.key}
+          key={feed.url}
           feed={feed}
           onVolume={(volume) =>
             setFeeds((prev) =>
-              prev.map((item) => (item.key === feed.key ? { ...item, volume } : item))
+              prev.map((item) => (item.url === feed.url ? { ...item, volume } : item))
             )
           }
-          onRemove={() => setFeeds((prev) => prev.filter((item) => item.key !== feed.key))}
+          onRemove={() => setFeeds((prev) => prev.filter((item) => item.url !== feed.url))}
         />
       ))}
-      <a href="https://www.liveatc.net/search/?icao=KAUS" target="_blank" rel="noopener noreferrer">
-        Find feeds on LiveATC
-      </a>
     </section>
   );
 }

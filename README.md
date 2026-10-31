@@ -526,16 +526,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Live radio listening
 
-The Radio screen includes independent LiveATC players alongside the recorded
-transmission log. KAUS Tower (`kaus3_twr`) is provided initially. Add another
-radio using its LiveATC mount/feed key (the `mount` value in a LiveATC listening
-page URL), and optionally give it a label. Each radio has Play/Stop and its own
-volume; several feeds can play simultaneously. Volume zero mutes a feed.
+The Radio screen includes a generic audio stream mixer alongside recorded
+transmissions. No streams are configured by default. Add a direct HTTP or HTTPS
+stream URL and an optional label. Each radio has independent Play/Stop and volume
+controls, and several feeds can play simultaneously. Volume zero mutes a feed.
 
-Players connect directly from your browser to `https://d.liveatc.net/<feed-key>`.
-LiveATC redirects to an audio server with its generated `nocache` parameter.
-No server API key or radio receiver is needed for live listening. Feed availability
-is controlled by LiveATC. Playback starts only when clicked and stops when leaving
-the Radio screen or removing a feed. Feed selections and volumes are saved locally
-in this browser; playback is never restored automatically. Live streams are not
-recorded or sent through SkySpy's transcription pipeline.
+Use streams you own or are authorized to access through a third-party player.
+The URL must deliver a browser-supported audio format; website pages and playlist
+resolution are not supported. Use HTTPS streams when serving SkySpy over HTTPS.
+URLs are used as supplied, including query parameters, without provider-specific
+rewriting. Playback connects directly from the browser only after pressing Play.
+
+Selections and volumes are saved in browser storage, including any URL query
+parameters; avoid URLs containing secrets. Embedded username/password credentials
+are rejected. Playback stops when leaving Radio or removing a feed and is never
+restored automatically. Live audio is not recorded or transcribed. Previous
+provider-specific saved feeds are not imported into the generic mixer.
