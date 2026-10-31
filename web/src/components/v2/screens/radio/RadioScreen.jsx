@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../primitives';
 import { useHashParamState, boolParam } from '../../../../hooks/useHashParamState';
 import { useRadioFeed } from './useRadioFeed';
-import { LiveRadioPanel } from './LiveRadioPanel';
 import {
   audioUrlOf,
   callsignOf,
@@ -156,7 +155,7 @@ export function RadioScreen({ apiBase, aircraft, onSelectAircraft }) {
   return (
     <div className="v2-radio" data-testid="v2-radio">
       <div className="v2-radio__top">
-        <LiveRadioPanel />
+
         {/* stat strip */}
         <div className="v2-radio__stats">
           <div className="v2-radio__stat">

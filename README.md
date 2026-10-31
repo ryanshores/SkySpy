@@ -539,6 +539,8 @@ rewriting. Playback connects directly from the browser only after pressing Play.
 
 Selections and volumes are saved in browser storage, including any URL query
 parameters; avoid URLs containing secrets. Embedded username/password credentials
-are rejected. Playback stops when leaving Radio or removing a feed and is never
-restored automatically. Live audio is not recorded or transcribed. Previous
+are rejected. Open the live radio controls from the speaker button in the app header, including
+while viewing the live tracking map. Playback continues across views and when
+controls are closed. Stop a feed or remove it to disconnect; closing the app also
+stops playback. Playback is never restored automatically. Live audio is not recorded or transcribed. Previous
 provider-specific saved feeds are not imported into the generic mixer.

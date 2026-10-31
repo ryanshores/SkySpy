@@ -474,3 +474,31 @@
 .v2-radio-live a {
   color: var(--accent);
 }
+
+/* Keep the mixer and its audio elements mounted across route changes. */
+.v2-radio-dock {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 900;
+  width: min(560px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  background: var(--bg1);
+  border: 1px solid var(--bord2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #0006;
+  font-family: var(--font-sans);
+}
+.v2-radio-dock[hidden] {
+  display: none;
+}
+.v2-radio-dock .v2-radio-live {
+  margin: 0;
+  padding-top: 20px;
+  border: 0;
+}
+.v2-radio-dock__close {
+  float: right;
+  margin: 4px;
+}

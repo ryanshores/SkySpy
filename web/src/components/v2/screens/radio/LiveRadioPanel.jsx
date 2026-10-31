@@ -162,7 +162,7 @@ export function LiveRadioPanel() {
       <h2>Live radio</h2>
       <p>
         Listen to multiple audio streams together. Feeds and volumes are saved in this browser.
-        Leaving Radio stops playback.
+        Playback continues while you switch views or close these controls.
       </p>
       <form onSubmit={addFeed} className="v2-radio-live__form">
         <label>
