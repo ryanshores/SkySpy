@@ -523,3 +523,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Ultrafeeder](https://github.com/sdr-enthusiasts/docker-adsb-ultrafeeder) for ADS-B reception
 - [OpenSky Network](https://opensky-network.org/) for aircraft database
 - [Aviation Weather Center](https://aviationweather.gov/) for weather data
+
+### Live radio listening
+
+The Radio screen includes independent LiveATC players alongside the recorded
+transmission log. KAUS Tower (`kaus3_twr`) is provided initially. Add another
+radio using its LiveATC mount/feed key (the `mount` value in a LiveATC listening
+page URL), and optionally give it a label. Each radio has Play/Stop and its own
+volume; several feeds can play simultaneously. Volume zero mutes a feed.
+
+Players connect directly from your browser to `https://d.liveatc.net/<feed-key>`.
+LiveATC redirects to an audio server with its generated `nocache` parameter.
+No server API key or radio receiver is needed for live listening. Feed availability
+is controlled by LiveATC. Playback starts only when clicked and stops when leaving
+the Radio screen or removing a feed. Feed selections and volumes are saved locally
+in this browser; playback is never restored automatically. Live streams are not
+recorded or sent through SkySpy's transcription pipeline.
