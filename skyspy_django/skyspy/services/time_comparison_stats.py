@@ -41,6 +41,7 @@ CACHE_KEY_TIME_COMPARISON_ALL = "stats:time:all"
 
 # Cache timeout (5 minutes)
 CACHE_TIMEOUT = 86400  # Keep the last successful result through slow/failed refreshes.
+CUSTOM_REFRESH_INTERVAL = 300
 
 # Day/Night hours configuration (6am-6pm is day by default)
 DAY_START_HOUR = 6
@@ -856,13 +857,13 @@ def _cached(key, kind=None, period=None):
         if not isinstance(period, int) or not 1 <= period <= maximum:
             raise ValidationError({"period": f"Choose a value between 1 and {maximum}."})
     stats = cache.get(key)
-    if stats is None and kind is not None:
+    if kind is not None and (stats is None or not cache.get(f"{key}:fresh")):
         pending = f"{key}:queued"
-        if cache.add(pending, True, timeout=300):
+        if cache.add(pending, True, timeout=CUSTOM_REFRESH_INTERVAL):
             try:
                 from skyspy.tasks.analytics import refresh_time_comparison_range
 
-                refresh_time_comparison_range.apply_async(args=[kind, period], expires=300)
+                refresh_time_comparison_range.apply_async(args=[kind, period], expires=CUSTOM_REFRESH_INTERVAL)
             except Exception:
                 cache.delete(pending)
                 logger.exception("Unable to enqueue time comparison refresh")
@@ -918,5 +919,7 @@ def refresh_custom_range(kind, period):
         "monthly": (calculate_monthly_totals, CACHE_KEY_MONTHLY_TOTALS),
     }[kind]
     result = calculator(period)
-    cache.set(f"{base}:{period}", result, timeout=CACHE_TIMEOUT)
+    key = f"{base}:{period}"
+    cache.set(key, result, timeout=CACHE_TIMEOUT)
+    cache.set(f"{key}:fresh", True, timeout=CUSTOM_REFRESH_INTERVAL)
     return result

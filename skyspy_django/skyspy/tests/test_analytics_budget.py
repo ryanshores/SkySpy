@@ -52,3 +52,24 @@ class AnalyticsBudgetTests(SimpleTestCase):
             self.assertEqual(stats.get_daily_totals(7), {"status": "preparing"})
             self.assertEqual(stats.get_daily_totals(7), {"status": "preparing"})
             enqueue.assert_called_once_with(args=["daily", 7], expires=300)
+
+    def test_custom_refresh_serves_cached_result_and_requeues_when_stale(self):
+        from django.core.cache.backends.locmem import LocMemCache
+
+        cache = LocMemCache("custom-range-refresh-test", {})
+        self.addCleanup(cache.clear)
+        key = f"{stats.CACHE_KEY_DAILY_TOTALS}:7"
+        result = {"daily_data": [], "days_requested": 7}
+        with (
+            patch.object(stats, "cache", cache),
+            patch.object(stats, "calculate_daily_totals", return_value=result),
+            patch("skyspy.tasks.analytics.refresh_time_comparison_range.apply_async") as enqueue,
+        ):
+            stats.refresh_custom_range.__wrapped__("daily", 7)
+            self.assertEqual(stats.get_daily_totals(7), result)
+            enqueue.assert_not_called()
+
+            cache.delete(f"{key}:fresh")
+            self.assertEqual(stats.get_daily_totals(7), result)
+            self.assertEqual(stats.get_daily_totals(7), result)
+            enqueue.assert_called_once_with(args=["daily", 7], expires=300)
