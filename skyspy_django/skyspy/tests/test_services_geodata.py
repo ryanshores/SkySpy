@@ -112,7 +112,7 @@ class CalculateBboxTests(TestCase):
 class FetchAwcDataTests(TestCase):
     """Tests for AWC API data fetching."""
 
-    @patch("skyspy.services.geodata._http_get_awc")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_fetch_awc_data_success(self, mock_http_get):
         """Test successful AWC data fetch."""
         mock_response = MagicMock()
@@ -126,7 +126,7 @@ class FetchAwcDataTests(TestCase):
         self.assertEqual(len(result), 1)
         mock_http_get.assert_called_once()
 
-    @patch("skyspy.services.geodata._http_get_awc")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_fetch_awc_data_empty_response(self, mock_http_get):
         """Test AWC data fetch with empty response."""
         mock_response = MagicMock()
@@ -137,7 +137,7 @@ class FetchAwcDataTests(TestCase):
 
         self.assertEqual(result, [])
 
-    @patch("skyspy.services.geodata._http_get_awc")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_fetch_awc_data_http_error(self, mock_http_get):
         """Test AWC data fetch with HTTP error."""
         import httpx
@@ -152,7 +152,7 @@ class FetchAwcDataTests(TestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("error", result)
 
-    @patch("skyspy.services.geodata._http_get_awc")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_fetch_awc_data_general_exception(self, mock_http_get):
         """Test AWC data fetch with general exception."""
         mock_http_get.side_effect = Exception("Connection failed")
