@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from skyspy.models import AirspaceAdvisory, AirspaceBoundary
+from skyspy.services import weather_cache
 from skyspy.socketio.utils import sync_emit
 from skyspy.tasks.locks import singleton_task
 
@@ -30,8 +31,8 @@ def refresh_airspace_advisories():
     """
     try:
         # Fetch G-AIRMETs
-        url = "https://aviationweather.gov/api/data/gairmet"
-        response = httpx.get(
+        url = f"{weather_cache.AWC_BASE}/gairmet"
+        response = weather_cache.http_get_awc(
             url,
             timeout=30.0,
             params={

@@ -37,14 +37,14 @@ def test_weather_permanent_error_is_not_retried(status):
 
 
 def test_weather_transient_error_retries_and_204_is_empty():
-    with patch.object(weather_cache, "_http") as client, patch.object(weather_cache._http_get_awc.retry, "sleep"):
+    with patch.object(weather_cache, "_http") as client, patch.object(weather_cache.http_get_awc.retry, "sleep"):
         client.return_value.get.side_effect = [response(503), response(204)]
         assert weather_cache._fetch_awc_data("metar", {}) == []
         assert client.return_value.get.call_count == 2
 
 
 def test_weather_bbox_is_normalized_at_request_boundary():
-    with patch.object(weather_cache, "_http_get_awc", return_value=response(json=[])) as fetch:
+    with patch.object(weather_cache, "http_get_awc", return_value=response(json=[])) as fetch:
         weather_cache._fetch_awc_data("pirep", {"bbox": "26.035363333,-101.833596666,34.368696666,-93.500263333"})
         assert fetch.call_args.args[1]["bbox"] == "26.03536,-101.83360,34.36870,-93.50026"
 
@@ -54,17 +54,9 @@ def test_scheduled_weather_bbox_is_rounded():
     assert geodata._feeder_weather_bbox() == "26.03536,-101.83360,34.36870,-93.50026"
 
 
-def test_weather_honors_retry_after():
-    error = httpx.HTTPStatusError(
-        "rate limited", request=response().request, response=response(429, headers={"Retry-After": "45"})
-    )
-    state = SimpleNamespace(outcome=SimpleNamespace(exception=lambda: error))
-    assert weather_cache._awc_retry_wait(state) == 45
-
-
 def test_failed_weather_refresh_preserves_cached_data():
     weather_cache.cache_metar("KAUS", [{"icaoId": "KAUS"}])
-    with patch.object(weather_cache, "_http_get_awc", side_effect=httpx.ConnectError("offline")):
+    with patch.object(weather_cache, "http_get_awc", side_effect=httpx.ConnectError("offline")):
         assert "error" in weather_cache._fetch_awc_data("metar", {})
     assert weather_cache.get_cached_metar("KAUS") == [{"icaoId": "KAUS"}]
 

@@ -459,24 +459,13 @@ def _retryable_awc_error(exc: BaseException) -> bool:
     )
 
 
-def _awc_retry_wait(state) -> float:
-    error = state.outcome.exception()
-    if isinstance(error, httpx.HTTPStatusError) and error.response.status_code == 429:
-        from skyspy.services.http_client import _parse_retry_after
-
-        delay = _parse_retry_after(error.response.headers.get("Retry-After"))
-        if delay is not None:
-            return max(0, delay)
-    return wait_exponential(multiplier=1, min=1, max=10)(state)
-
-
 @retry(
     stop=stop_after_attempt(3),
-    wait=_awc_retry_wait,
+    wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=retry_if_exception(_retryable_awc_error),
     reraise=True,
 )
-def _http_get_awc(url: str, params: dict, timeout: float = 15.0) -> httpx.Response:
+def http_get_awc(url: str, params: dict, timeout: float = 15.0) -> httpx.Response:
     """Retry transient failures, respecting cooldowns shared by all workers."""
     endpoint = url.rsplit("/", 1)[-1]
     if cooldown_remaining("awc") or cooldown_remaining(f"awc:{endpoint}"):
@@ -507,7 +496,7 @@ def _fetch_awc_data(endpoint: str, params: dict) -> dict | list:
         params = dict(params)
         if params.get("bbox"):
             params["bbox"] = ",".join(f"{float(v):.5f}" for v in params["bbox"].split(","))
-        response = _http_get_awc(f"{AWC_BASE}/{endpoint}", params, timeout=15.0)
+        response = http_get_awc(f"{AWC_BASE}/{endpoint}", params, timeout=15.0)
         if response.status_code == 204:
             return []
         return response.json() if response.text else []
@@ -868,9 +857,9 @@ def fetch_radar_timestamp() -> str | None:
 def fetch_winds_aloft(lat: float, lon: float, ttl: int = 3600) -> dict | None:
     """Return unavailable until a supported winds data adapter is implemented.
 
-    AWC's windtemp product is a regional FB text bulletin, not a latitude /
-    longitude JSON API. Calling it per aircraft cannot produce the structured
-    levels consumed by turbulence scoring and floods AWC with invalid requests.
+    AWC discontinued its regional wind/temp tables when it retired the NAM
+    model (NWS Service Change Notice 26-47). The legacy endpoint now returns
+    HTTP 400 even for its former supported queries.
     Keep the public function so callers consistently report missing winds data.
     """
     return None

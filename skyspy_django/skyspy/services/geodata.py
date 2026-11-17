@@ -23,7 +23,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from skyspy.models import CachedAirport, CachedGeoJSON, CachedNavaid
 from skyspy.models.aviation import point_from_latlon
-from skyspy.services import http_client
+from skyspy.services import http_client, weather_cache
 
 
 def _stamp_geom(objs):
@@ -38,7 +38,6 @@ def _stamp_geom(objs):
 logger = logging.getLogger(__name__)
 
 # API endpoint
-AWC_BASE = "https://aviationweather.gov/api/data"
 
 # Default bbox when no feeder location is configured (CONUS, majors only).
 CONUS_BBOX = "24,-130,50,-60"
@@ -121,26 +120,6 @@ def haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
 )
-def _http_get_awc(url: str, params: dict, timeout: float = 15.0) -> httpx.Response:
-    """HTTP GET with retry logic for AWC API."""
-    response = http_client.get_shared_client().get(
-        url,
-        params=params,
-        headers={
-            "User-Agent": "SkySpyAPI/2.6 (aircraft-tracker)",
-            "Accept": "application/json",
-        },
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return response
-
-
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
-)
 def _http_get_geojson(url: str, timeout: float = 15.0) -> httpx.Response:
     """HTTP GET with retry logic for GeoJSON fetches."""
     response = http_client.get_shared_client().get(
@@ -167,7 +146,7 @@ def _http_get_faa(url: str, params: dict, timeout: float = 20.0) -> httpx.Respon
 def fetch_awc_data(endpoint: str, params: dict) -> dict | list:
     """Fetch data from Aviation Weather Center API with retry logic."""
     try:
-        response = _http_get_awc(f"{AWC_BASE}/{endpoint}", params, timeout=15.0)
+        response = weather_cache.http_get_awc(f"{weather_cache.AWC_BASE}/{endpoint}", params, timeout=15.0)
         return response.json() if response.text else []
     except httpx.HTTPStatusError as e:
         logger.error(f"AWC API error for {endpoint}: {e.response.status_code}")

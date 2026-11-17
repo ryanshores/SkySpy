@@ -34,7 +34,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         AirspaceAdvisory.objects.all().delete()
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_success(self, mock_httpx_get, mock_sync_emit):
         """Test successful advisory refresh."""
         # Mock httpx response with G-AIRMET data
@@ -94,7 +94,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         self.assertEqual(sigmet.severity, "severe")
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_updates_existing(self, mock_httpx_get, mock_sync_emit):
         """Test that existing advisories are updated, not duplicated."""
         # Create existing advisory
@@ -129,7 +129,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         self.assertEqual(advisory.severity, "moderate")
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_deletes_expired(self, mock_httpx_get, mock_sync_emit):
         """Test that expired advisories are deleted."""
         now = timezone.now()
@@ -163,7 +163,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         # Current advisory should remain
         self.assertTrue(AirspaceAdvisory.objects.filter(advisory_id="GAIRMET-CURRENT-001").exists())
 
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_http_error(self, mock_httpx_get):
         """Test handling of HTTP errors."""
         import httpx
@@ -173,7 +173,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         # Task should complete without raising
         refresh_airspace_advisories()
 
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_non_200_response(self, mock_httpx_get):
         """Test handling of non-200 HTTP response."""
         mock_response = MagicMock()
@@ -184,7 +184,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         refresh_airspace_advisories()
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_skips_invalid_advisory(self, mock_httpx_get, mock_sync_emit):
         """Test that advisories without ID are skipped."""
         mock_response = MagicMock()
@@ -210,7 +210,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         self.assertTrue(AirspaceAdvisory.objects.filter(advisory_id="GAIRMET-VALID-001").exists())
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_handles_invalid_dates(self, mock_httpx_get, mock_sync_emit):
         """Test handling of invalid date formats in advisory data."""
         mock_response = MagicMock()
@@ -235,7 +235,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         self.assertIsNone(advisory.valid_to)
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_broadcasts_update(self, mock_httpx_get, mock_sync_emit):
         """Test that WebSocket update is broadcast on success."""
         mock_response = MagicMock()
@@ -253,7 +253,7 @@ class RefreshAirspaceAdvisoriesTaskTest(TestCase):
         mock_sync_emit.assert_called()
 
     @patch("skyspy.tasks.airspace.sync_emit")
-    @patch("skyspy.tasks.airspace.httpx.get")
+    @patch("skyspy.services.weather_cache.http_get_awc")
     def test_refresh_advisories_handles_broadcast_failure(self, mock_httpx_get, mock_sync_emit):
         """Test that broadcast failure doesn't break the task."""
         mock_response = MagicMock()
